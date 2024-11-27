@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Alert } from 'react-native';
 
 interface User {
   id: string;
@@ -20,75 +22,150 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [totalUsers, setTotalUsers] = useState(0);
 
   useEffect(() => {
-    // Aqui vamos verificar se existe uma sessão ativa
     loadStoredUser();
-    // Carregar o total de usuários do Supabase
-    loadTotalUsers();
+
+    // Escutar mudanças na autenticação
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('auth_id', session.user.id)
+          .single();
+
+        if (!profileError && profile) {
+          setUser({
+            id: session.user.id,
+            name: profile.name,
+            email: session.user.email!,
+            role: profile.role,
+          });
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
   }, []);
 
   async function loadStoredUser() {
     try {
-      // TODO: Implementar verificação de sessão com Supabase
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
-    }
-  }
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+      
+      if (session?.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('auth_id', session.user.id)
+          .single();
 
-  async function loadTotalUsers() {
-    try {
-      // TODO: Implementar contagem de usuários com Supabase
-      // Por enquanto, vamos usar um valor mockado
-      setTotalUsers(0);
+        if (profileError) throw profileError;
+
+        setUser({
+          id: session.user.id,
+          name: profile.name,
+          email: session.user.email!,
+          role: profile.role,
+        });
+      }
     } catch (error) {
-      console.error('Erro ao carregar total de usuários:', error);
+      console.error('Erro ao carregar usuário:', error);
+    } finally {
+      setLoading(false);
     }
   }
 
   async function signIn(email: string, password: string) {
     try {
-      // TODO: Implementar login com Supabase
-      // Exemplo de usuário mockado
-      setUser({
-        id: '1',
-        name: 'Usuário Teste',
-        email: email,
-        role: 'organizador',
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-    } catch (error) {
+
+      if (error) throw error;
+
+      if (session?.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('auth_id', session.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        setUser({
+          id: session.user.id,
+          name: profile.name,
+          email: session.user.email!,
+          role: profile.role,
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao fazer login:', error);
+      Alert.alert('Erro', error.message || 'Não foi possível fazer login');
       throw error;
     }
   }
 
   async function signUp(name: string, email: string, password: string) {
     try {
-      // TODO: Implementar registro com Supabase
-      // O primeiro usuário será administrador, os demais serão organizadores
-      const role = totalUsers === 0 ? 'administrador' : 'organizador';
-      
-      // Exemplo de usuário mockado
-      setUser({
-        id: '1',
-        name: name,
-        email: email,
-        role: role,
+      // 1. Verificar se já existem usuários para determinar o papel
+      const { count, error: countError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+
+      const role = count === 0 ? 'administrador' : 'organizador';
+
+      // 2. Criar o usuário no auth
+      const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+        }
       });
 
-      // Incrementar o total de usuários
-      setTotalUsers(prev => prev + 1);
-    } catch (error) {
+      if (signUpError) throw signUpError;
+      if (!newUser) throw new Error('Não foi possível criar o usuário');
+
+      // 3. Criar o perfil
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          auth_id: newUser.id,
+          name,
+          role,
+        });
+
+      if (profileError) {
+        console.error('Erro ao criar perfil:', profileError);
+        throw profileError;
+      }
+
+      // 4. Fazer login automaticamente após o registro
+      await signIn(email, password);
+
+      Alert.alert('Sucesso', 'Conta criada com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao registrar:', error);
+      Alert.alert('Erro', 'Não foi possível criar a conta. Tente novamente.');
       throw error;
     }
   }
 
   async function signOut() {
     try {
-      // TODO: Implementar logout com Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       setUser(null);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao fazer logout:', error);
+      Alert.alert('Erro', error.message || 'Não foi possível fazer logout');
       throw error;
     }
   }
