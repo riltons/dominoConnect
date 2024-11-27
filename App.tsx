@@ -63,11 +63,11 @@ function DrawerNavigation() {
         }}
       />
       <Drawer.Screen
-        name="Nova Partida"
+        name="Nova Comunidade"
         component={HomeScreen}
         options={{
           drawerIcon: ({ color }) => (
-            <Ionicons name="game-controller-outline" size={24} color={color} />
+            <Ionicons name="people-circle-outline" size={24} color={color} />
           ),
         }}
       />
