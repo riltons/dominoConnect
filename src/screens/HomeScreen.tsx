@@ -1,46 +1,43 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
-export function HomeScreen() {
-  const navigation = useNavigation();
-  const { signOut, user } = useAuth();
+export default function HomeScreen() {
+  const { user, signOut } = useAuth();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Bem-vindo, {user?.name}</Text>
-      <Text style={styles.role}>{user?.role === 'administrador' ? 'Administrador' : 'Organizador'}</Text>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={() => navigation.navigate('NovaPartida')}
-        >
-          <Text style={styles.buttonText}>Nova Partida</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={() => navigation.navigate('Historico')}
-        >
-          <Text style={styles.buttonText}>Histórico</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={() => navigation.navigate('Jogadores')}
-        >
-          <Text style={styles.buttonText}>Jogadores</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.logoutButton]}
-          onPress={signOut}
-        >
-          <Text style={styles.buttonText}>Sair</Text>
-        </TouchableOpacity>
+      <View style={styles.header}>
+        <Text style={styles.title}>DominoConnect</Text>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{user?.name}</Text>
+          <Text style={styles.userRole}>{user?.role}</Text>
+        </View>
       </View>
+
+      <ScrollView style={styles.content}>
+        <TouchableOpacity style={styles.menuItem}>
+          <Text style={styles.menuItemText}>Nova Partida</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem}>
+          <Text style={styles.menuItemText}>Histórico</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem}>
+          <Text style={styles.menuItemText}>Jogadores</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
+        <Text style={styles.logoutButtonText}>Sair</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -48,40 +45,65 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F5',
   },
-  welcome: {
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 20,
+    paddingTop: 40,
+  },
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    color: '#FFF',
+    marginBottom: 10,
   },
-  role: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 32,
+  userInfo: {
+    marginTop: 5,
   },
-  buttonContainer: {
-    width: '100%',
-    gap: 15,
+  userName: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
+  userRole: {
+    color: '#FFF',
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  menuItem: {
+    backgroundColor: '#FFF',
+    padding: 20,
     borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
   },
   logoutButton: {
+    margin: 20,
     backgroundColor: '#FF3B30',
-    marginTop: 16,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  logoutButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

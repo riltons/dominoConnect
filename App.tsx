@@ -1,14 +1,11 @@
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
-import { HomeScreen } from './src/screens/HomeScreen';
-import { NovaPartidaScreen } from './src/screens/NovaPartidaScreen';
-import { HistoricoScreen } from './src/screens/HistoricoScreen';
-import { JogadoresScreen } from './src/screens/JogadoresScreen';
-import { LoginScreen } from './src/screens/LoginScreen';
-import { RegisterScreen } from './src/screens/RegisterScreen';
-import { View, ActivityIndicator } from 'react-native';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import { StatusBar } from 'expo-status-bar';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,62 +13,21 @@ function Navigation() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return null;
   }
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      {user ? (
-        // Rotas autenticadas
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {!user ? (
+        // Rotas públicas
         <>
-          <Stack.Screen 
-            name="Home" 
-            component={HomeScreen} 
-            options={{ title: 'DominoConnect' }}
-          />
-          <Stack.Screen 
-            name="NovaPartida" 
-            component={NovaPartidaScreen} 
-            options={{ title: 'Nova Partida' }}
-          />
-          <Stack.Screen 
-            name="Historico" 
-            component={HistoricoScreen} 
-            options={{ title: 'Histórico' }}
-          />
-          <Stack.Screen 
-            name="Jogadores" 
-            component={JogadoresScreen} 
-            options={{ title: 'Jogadores' }}
-          />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       ) : (
-        // Rotas não autenticadas
+        // Rotas protegidas
         <>
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="Register" 
-            component={RegisterScreen} 
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="Home" component={HomeScreen} />
         </>
       )}
     </Stack.Navigator>

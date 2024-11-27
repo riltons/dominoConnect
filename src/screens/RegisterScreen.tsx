@@ -1,72 +1,88 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 
-export function RegisterScreen() {
-  const navigation = useNavigation();
-  const { signUp } = useAuth();
+export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
+  const { signUp } = useAuth();
 
-  const handleRegister = async () => {
-    if (!name || !email || !password) {
+  async function handleRegister() {
+    if (!name.trim() || !email.trim() || !password.trim()) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
     try {
-      // O papel será determinado automaticamente no backend
-      await signUp(name, email, password);
-      Alert.alert('Sucesso', 'Conta criada com sucesso!');
-      navigation.navigate('Login');
+      setLoading(true);
+      await signUp(name.trim(), email.trim(), password.trim());
+      // Não precisa navegar manualmente, o AuthContext vai redirecionar automaticamente
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível criar a conta');
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>DominoConnect</Text>
-      <Text style={styles.subtitle}>Registro</Text>
+      <Text style={styles.title}>Criar Conta</Text>
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nome"
-          value={name}
-          onChangeText={setName}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Nome"
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="words"
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Senha"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+      <TouchableOpacity 
+        style={styles.button}
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
           <Text style={styles.buttonText}>Registrar</Text>
-        </TouchableOpacity>
+        )}
+      </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.linkText}>Já tem uma conta? Faça login</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity 
+        style={styles.linkButton}
+        onPress={() => navigation.navigate('Login' as never)}
+      >
+        <Text style={styles.linkText}>Já tem uma conta? Faça login</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -74,53 +90,37 @@ export function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#F5F5F5',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  subtitle: {
     fontSize: 24,
-    marginBottom: 32,
-    color: '#666',
-  },
-  form: {
-    width: '100%',
-    maxWidth: 400,
-    gap: 16,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
   },
   input: {
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
     fontSize: 16,
-    backgroundColor: '#f5f5f5',
   },
   button: {
-    width: '100%',
-    height: 50,
     backgroundColor: '#007AFF',
-    borderRadius: 8,
+    padding: 15,
+    borderRadius: 5,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 10,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
   linkButton: {
-    marginTop: 16,
+    marginTop: 20,
     alignItems: 'center',
   },
   linkText: {
