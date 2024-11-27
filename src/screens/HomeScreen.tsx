@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  FlatList,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -37,6 +38,42 @@ const topPlayers = [
   { nome: 'Pedro Oliveira', vitorias: 187, pontuacaoMedia: 159, winRate: '65%' },
 ];
 
+// Dados fictícios das comunidades
+const userCommunities = [
+  {
+    id: '1',
+    nome: 'Dominó Masters',
+    membros: 45,
+    jogosSemanais: 23,
+    mediaJogadores: 4.8,
+    ranking: '#2 Nacional'
+  },
+  {
+    id: '2',
+    nome: 'Dominó Club SP',
+    membros: 32,
+    jogosSemanais: 18,
+    mediaJogadores: 4.5,
+    ranking: '#5 Regional'
+  },
+  {
+    id: '3',
+    nome: 'Pro Players',
+    membros: 28,
+    jogosSemanais: 15,
+    mediaJogadores: 4.7,
+    ranking: '#8 Nacional'
+  },
+  {
+    id: '4',
+    nome: 'Dominó Elite',
+    membros: 37,
+    jogosSemanais: 20,
+    mediaJogadores: 4.6,
+    ranking: '#3 Regional'
+  },
+];
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
 
@@ -64,6 +101,27 @@ export default function HomeScreen() {
     </View>
   );
 
+  const CommunityCard = ({ community }: { community: typeof userCommunities[0] }) => (
+    <View style={styles.communityCard}>
+      <Text style={styles.communityName}>{community.nome}</Text>
+      <Text style={styles.communityRanking}>{community.ranking}</Text>
+      <View style={styles.communityStats}>
+        <View style={styles.communityStat}>
+          <Text style={styles.communityStatValue}>{community.membros}</Text>
+          <Text style={styles.communityStatLabel}>Membros</Text>
+        </View>
+        <View style={styles.communityStat}>
+          <Text style={styles.communityStatValue}>{community.jogosSemanais}</Text>
+          <Text style={styles.communityStatLabel}>Jogos/Sem</Text>
+        </View>
+        <View style={styles.communityStat}>
+          <Text style={styles.communityStatValue}>{community.mediaJogadores}</Text>
+          <Text style={styles.communityStatLabel}>Média</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -85,6 +143,18 @@ export default function HomeScreen() {
             <StatCard title="Pontuação Média" value={userStats.pontuacao.media} />
             <StatCard title="Melhor Pontuação" value={userStats.pontuacao.melhor} />
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Suas Comunidades</Text>
+          <FlatList
+            horizontal
+            data={userCommunities}
+            renderItem={({ item }) => <CommunityCard community={item} />}
+            keyExtractor={(item) => item.id}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.communitiesContainer}
+          />
         </View>
 
         <View style={styles.section}>
@@ -119,6 +189,7 @@ export default function HomeScreen() {
 
 const { width } = Dimensions.get('window');
 const statCardWidth = (width - 60) / 2;
+const communityCardWidth = width * 0.75;
 
 const styles = StyleSheet.create({
   container: {
@@ -244,6 +315,57 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   playerStatText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  communitiesContainer: {
+    paddingRight: 20,
+  },
+  communityCard: {
+    width: communityCardWidth,
+    backgroundColor: '#FFF',
+    borderRadius: 15,
+    padding: 20,
+    marginLeft: 20,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  communityName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  communityRanking: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginBottom: 15,
+    fontWeight: '500',
+  },
+  communityStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    paddingTop: 15,
+  },
+  communityStat: {
+    alignItems: 'center',
+  },
+  communityStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  communityStatLabel: {
     fontSize: 12,
     color: '#666',
   },
