@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Dados fictícios para o dashboard
 const userStats = {
@@ -147,6 +148,10 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.communitiesContainer}
           />
+          <TouchableOpacity style={styles.newCommunityButton}>
+            <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
+            <Text style={styles.newCommunityButtonText}>Nova Comunidade</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -351,5 +356,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  newCommunityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  newCommunityButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
   },
 });
