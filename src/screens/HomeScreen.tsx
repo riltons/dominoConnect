@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Dimensions,
   FlatList,
+  TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -75,7 +75,7 @@ const userCommunities = [
 ];
 
 export default function HomeScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   const StatCard = ({ title, value, subtitle }: { title: string; value: string | number; subtitle?: string }) => (
     <View style={styles.statCard}>
@@ -124,14 +124,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>DominoConnect</Text>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userRole}>{user?.role}</Text>
-        </View>
-      </View>
-
       <ScrollView style={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Suas Estatísticas</Text>
@@ -179,10 +171,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-        <Text style={styles.logoutButtonText}>Sair</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -195,30 +183,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  header: {
-    backgroundColor: '#007AFF',
-    padding: 20,
-    paddingTop: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 10,
-  },
-  userInfo: {
-    marginTop: 5,
-  },
-  userName: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  userRole: {
-    color: '#FFF',
-    fontSize: 14,
-    opacity: 0.8,
   },
   content: {
     flex: 1,
@@ -387,17 +351,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
-  },
-  logoutButton: {
-    margin: 20,
-    backgroundColor: '#FF3B30',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
