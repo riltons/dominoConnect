@@ -28,10 +28,15 @@ export const TestConnection = () => {
       )}
 
       {result && (
-        <View style={styles.successContainer}>
-          <Text style={styles.successTitle}>Conexão estabelecida!</Text>
-          <Text style={styles.successText}>
-            Versão do PostgreSQL: {result}
+        <View style={[
+          styles.resultContainer,
+          result.success ? styles.successContainer : styles.errorContainer
+        ]}>
+          <Text style={[
+            styles.resultText,
+            result.success ? styles.successText : styles.errorText
+          ]}>
+            {result.message}
           </Text>
         </View>
       )}
@@ -43,8 +48,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 24,
@@ -55,7 +59,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginTop: 20,
   },
   loadingText: {
     marginTop: 10,
@@ -64,34 +68,33 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     backgroundColor: '#fee2e2',
-    padding: 15,
+    padding: 16,
     borderRadius: 8,
-    marginVertical: 10,
+    marginTop: 20,
   },
   errorTitle: {
     color: '#dc2626',
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 14,
+    color: '#dc2626',
+    fontSize: 16,
+  },
+  resultContainer: {
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 20,
   },
   successContainer: {
     backgroundColor: '#dcfce7',
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 10,
   },
-  successTitle: {
-    color: '#16a34a',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
+  resultText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   successText: {
-    color: '#22c55e',
-    fontSize: 14,
+    color: '#16a34a',
   },
 });

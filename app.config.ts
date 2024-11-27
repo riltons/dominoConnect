@@ -3,38 +3,34 @@ import { ExpoConfig, ConfigContext } from '@expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'DominoConnect',
-  slug: 'dominoconnect',
+  slug: 'dominoconnect2',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
   userInterfaceStyle: 'light',
-  splash: {
-    image: './assets/splash.png',
-    resizeMode: 'contain',
-    backgroundColor: '#ffffff'
-  },
   updates: {
-    fallbackToCacheTimeout: 0
+    url: 'https://u.expo.dev/your-project-id'
   },
   assetBundlePatterns: [
     '**/*'
   ],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.dominoconnect.app'
+    bundleIdentifier: 'com.dominoconnect2'
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#FFFFFF'
     },
-    package: 'com.dominoconnect.app'
+    package: 'com.dominoconnect2'
+  },
+  web: {
+    favicon: './assets/favicon.png'
   },
   extra: {
-    supabaseUrl: process.env.SUPABASE_URL,
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
     eas: {
-      projectId: process.env.EAS_PROJECT_ID
+      projectId: ''  // Será preenchido após criar o projeto
     }
-  }
+  },
+  owner: 'your-expo-username'  // Será atualizado com seu username
 });

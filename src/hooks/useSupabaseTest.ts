@@ -11,19 +11,27 @@ export const useSupabaseTest = () => {
       setIsLoading(true);
       setError(null);
       
-      // Tenta buscar a versão do PostgreSQL
+      console.log('Iniciando teste de conexão...');
+      
+      // Tenta fazer uma query simples na tabela users
       const { data, error: queryError } = await supabase
-        .rpc('version')
-        .single();
+        .from('users')
+        .select('id')
+        .limit(1);
 
       if (queryError) {
-        throw queryError;
+        console.error('Erro na query:', queryError);
+        throw new Error(`Erro na query: ${queryError.message}`);
       }
 
-      setResult(data);
+      console.log('Conexão bem sucedida! Resultado:', data);
+      setResult({ success: true, message: 'Conexão estabelecida com sucesso!' });
       return data;
     } catch (err: any) {
-      setError(err.message);
+      console.error('Erro completo:', JSON.stringify(err, null, 2));
+      const errorMessage = err.message || 'Erro desconhecido ao conectar com o Supabase';
+      setError(errorMessage);
+      setResult({ success: false, message: errorMessage });
       return null;
     } finally {
       setIsLoading(false);
