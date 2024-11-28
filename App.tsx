@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import CommunitiesScreen from './src/screens/CommunitiesScreen';
 import CustomDrawer from './src/components/CustomDrawer';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,10 +92,10 @@ function DrawerNavigation() {
       />
       <Drawer.Screen
         name="Comunidades"
-        component={HomeScreen}
+        component={CommunitiesScreen}
         options={{
           drawerIcon: ({ color }) => (
-            <Ionicons name="globe-outline" size={24} color={color} />
+            <Ionicons name="people-outline" size={24} color={color} />
           ),
         }}
       />
