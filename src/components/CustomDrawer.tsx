@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
 } from 'react-native';
 import {
   DrawerContentScrollView,
@@ -49,42 +48,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    padding: 20,
     backgroundColor: '#007AFF',
+    padding: 20,
     paddingTop: 40,
-    paddingBottom: 10, 
+    marginBottom: 20,
   },
   userImageContainer: {
-    marginBottom: 5, 
+    alignItems: 'center',
+    marginBottom: 15,
   },
   userImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#FFF',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
   userInitials: {
-    fontSize: 28,
+    fontSize: 32,
     color: '#007AFF',
     fontWeight: 'bold',
   },
   userName: {
-    color: '#FFF',
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 2, 
+    textAlign: 'center',
+    marginBottom: 5,
   },
   userRole: {
-    color: '#FFF',
+    color: '#fff',
     fontSize: 14,
+    textAlign: 'center',
     opacity: 0.8,
   },
   scrollViewContent: {
-    paddingTop: 0, 
+    paddingTop: 10,
   },
   drawerContent: {
     flex: 1,
+    paddingHorizontal: 10,
   },
 });
