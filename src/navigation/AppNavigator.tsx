@@ -35,6 +35,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
 function DrawerNavigator() {
+  const { signOut } = useAuth();
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
@@ -54,8 +56,8 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="Home"
         component={HomeScreen}
-        options={{
-          title: 'Início',
+        options={({ navigation }) => ({
+          title: 'Dominó Connect',
           drawerIcon: ({ focused, color, size }) => (
             <Ionicons 
               name={focused ? 'home' : 'home-outline'} 
@@ -63,7 +65,15 @@ function DrawerNavigator() {
               color={color} 
             />
           ),
-        }}
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={signOut}
+              style={{ marginRight: 16 }}
+            >
+              <Ionicons name="log-out-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          ),
+        })}
       />
       <Drawer.Screen
         name="Communities"

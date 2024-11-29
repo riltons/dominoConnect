@@ -154,7 +154,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suas Estatísticas</Text>
+          <Text style={styles.sectionTitle}>Minhas Pontuações</Text>
           <View style={styles.statsGrid}>
             <StatCard title="Jogos Ganhos" value={userStats.jogos.ganhos} subtitle={`de ${userStats.jogos.total}`} />
             <StatCard title="Win Rate Jogos" value={userStats.jogos.winRate} />
