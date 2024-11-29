@@ -6,9 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
 type Community = {
   id: string;
@@ -16,29 +18,28 @@ type Community = {
   description: string | null;
   whatsapp_group_id: string | null;
   created_at: string;
+  created_by: string;
 };
 
 export default function CommunitiesScreen() {
   const navigation = useNavigation();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchCommunities();
-
-    // Atualiza a lista quando voltar para esta tela
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchCommunities();
-    });
-
-    return unsubscribe;
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchCommunities = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('communities')
         .select('*')
+        .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -50,7 +51,23 @@ export default function CommunitiesScreen() {
       console.error('Erro ao buscar comunidades:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  useEffect(() => {
+    fetchCommunities();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchCommunities();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchCommunities();
   };
 
   const renderCommunityItem = ({ item }: { item: Community }) => (
@@ -61,22 +78,36 @@ export default function CommunitiesScreen() {
         console.log('Navegar para comunidade:', item.id);
       }}
     >
-      <Text style={styles.communityName}>{item.name}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.communityName}>{item.name}</Text>
+        <View style={styles.badgeContainer}>
+          <Ionicons name="people" size={16} color="#007AFF" />
+          <Text style={styles.badgeText}>Criador</Text>
+        </View>
+      </View>
       {item.description && (
         <Text style={styles.communityDescription} numberOfLines={2}>
           {item.description}
         </Text>
       )}
-      <Text style={styles.communityDate}>
-        Criada em: {new Date(item.created_at).toLocaleDateString('pt-BR')}
-      </Text>
+      <View style={styles.cardFooter}>
+        <Text style={styles.communityDate}>
+          Criada em: {new Date(item.created_at).toLocaleDateString('pt-BR')}
+        </Text>
+        {item.whatsapp_group_id && (
+          <TouchableOpacity style={styles.whatsappButton}>
+            <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+          </TouchableOpacity>
+        )}
+      </View>
     </TouchableOpacity>
   );
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
+      <Ionicons name="people-outline" size={48} color="#999" />
       <Text style={styles.emptyText}>
-        Nenhuma comunidade encontrada.{'\n'}
+        Você ainda não criou nenhuma comunidade.{'\n'}
         Crie uma nova comunidade para começar!
       </Text>
     </View>
@@ -93,13 +124,20 @@ export default function CommunitiesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={renderEmptyList}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007AFF']}
+            />
+          }
         />
       )}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('CreateCommunity' as never)}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -117,7 +155,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    paddingBottom: 80, // Espaço para o FAB
+    paddingBottom: 80,
   },
   communityCard: {
     backgroundColor: '#FFFFFF',
@@ -130,32 +168,63 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   communityName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    flex: 1,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   communityDescription: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   communityDate: {
     fontSize: 12,
     color: '#999',
+  },
+  whatsappButton: {
+    padding: 4,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 64,
   },
   emptyText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+    marginTop: 16,
   },
   fab: {
     position: 'absolute',
@@ -172,10 +241,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-  },
-  fabText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
 });
