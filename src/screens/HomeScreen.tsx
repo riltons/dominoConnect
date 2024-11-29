@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,11 @@ import {
   Dimensions,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Dados fictícios para o dashboard
@@ -39,44 +42,57 @@ const topPlayers = [
   { nome: 'Pedro Oliveira', vitorias: 187, pontuacaoMedia: 159, winRate: '65%' },
 ];
 
-// Dados fictícios das comunidades
-const userCommunities = [
-  {
-    id: '1',
-    nome: 'Dominó Masters',
-    membros: 45,
-    jogosSemanais: 23,
-    mediaJogadores: 4.8,
-    ranking: '#2 Nacional'
-  },
-  {
-    id: '2',
-    nome: 'Dominó Club SP',
-    membros: 32,
-    jogosSemanais: 18,
-    mediaJogadores: 4.5,
-    ranking: '#5 Regional'
-  },
-  {
-    id: '3',
-    nome: 'Pro Players',
-    membros: 28,
-    jogosSemanais: 15,
-    mediaJogadores: 4.7,
-    ranking: '#8 Nacional'
-  },
-  {
-    id: '4',
-    nome: 'Dominó Elite',
-    membros: 37,
-    jogosSemanais: 20,
-    mediaJogadores: 4.6,
-    ranking: '#3 Regional'
-  },
-];
+type Community = {
+  id: string;
+  name: string;
+  description: string | null;
+  whatsapp_group_id: string | null;
+  created_at: string;
+  created_by: string;
+  members_count?: number;
+};
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loadingCommunities, setLoadingCommunities] = useState(true);
+
+  useEffect(() => {
+    fetchUserCommunities();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchUserCommunities();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const fetchUserCommunities = async () => {
+    try {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Adiciona um contador fictício de membros por enquanto
+      const communitiesWithMembers = (data || []).map(community => ({
+        ...community,
+        members_count: Math.floor(Math.random() * 50) + 5, // 5-55 membros
+      }));
+
+      setCommunities(communitiesWithMembers);
+    } catch (error) {
+      console.error('Erro ao buscar comunidades:', error);
+    } finally {
+      setLoadingCommunities(false);
+    }
+  };
 
   const StatCard = ({ title, value, subtitle }: { title: string; value: string | number; subtitle?: string }) => (
     <View style={styles.statCard}>
@@ -102,25 +118,39 @@ export default function HomeScreen() {
     </View>
   );
 
-  const CommunityCard = ({ community }: { community: typeof userCommunities[0] }) => (
-    <View style={styles.communityCard}>
-      <Text style={styles.communityName}>{community.nome}</Text>
-      <Text style={styles.communityRanking}>{community.ranking}</Text>
+  const CommunityCard = ({ community }: { community: Community }) => (
+    <TouchableOpacity 
+      style={styles.communityCard}
+      onPress={() => {
+        // TODO: Navegar para detalhes da comunidade
+        console.log('Navegar para comunidade:', community.id);
+      }}
+    >
+      <Text style={styles.communityName}>{community.name}</Text>
+      {community.description && (
+        <Text style={styles.communityDescription} numberOfLines={2}>
+          {community.description}
+        </Text>
+      )}
       <View style={styles.communityStats}>
         <View style={styles.communityStat}>
-          <Text style={styles.communityStatValue}>{community.membros}</Text>
+          <Ionicons name="people" size={16} color="#007AFF" />
+          <Text style={styles.communityStatValue}>{community.members_count}</Text>
           <Text style={styles.communityStatLabel}>Membros</Text>
         </View>
+        {community.whatsapp_group_id && (
+          <View style={styles.communityStat}>
+            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+            <Text style={styles.communityStatLabel}>Grupo</Text>
+          </View>
+        )}
         <View style={styles.communityStat}>
-          <Text style={styles.communityStatValue}>{community.jogosSemanais}</Text>
-          <Text style={styles.communityStatLabel}>Jogos/Sem</Text>
-        </View>
-        <View style={styles.communityStat}>
-          <Text style={styles.communityStatValue}>{community.mediaJogadores}</Text>
-          <Text style={styles.communityStatLabel}>Média</Text>
+          <Text style={styles.communityDate}>
+            {new Date(community.created_at).toLocaleDateString('pt-BR')}
+          </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -139,16 +169,30 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suas Comunidades</Text>
-          <FlatList
-            horizontal
-            data={userCommunities}
-            renderItem={({ item }) => <CommunityCard community={item} />}
-            keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.communitiesContainer}
-          />
-          <TouchableOpacity style={styles.newCommunityButton}>
+          <Text style={styles.sectionTitle}>Minhas Comunidades</Text>
+          {loadingCommunities ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+          ) : communities.length > 0 ? (
+            <FlatList
+              horizontal
+              data={communities}
+              renderItem={({ item }) => <CommunityCard community={item} />}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.communitiesContainer}
+            />
+          ) : (
+            <View style={styles.emptyCommunities}>
+              <Ionicons name="people-outline" size={48} color="#999" />
+              <Text style={styles.emptyText}>
+                Você ainda não criou nenhuma comunidade
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity 
+            style={styles.newCommunityButton}
+            onPress={() => navigation.navigate('CreateCommunity' as never)}
+          >
             <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
             <Text style={styles.newCommunityButtonText}>Nova Comunidade</Text>
           </TouchableOpacity>
@@ -200,10 +244,13 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 16,
     color: '#333',
+  },
+  loader: {
+    marginVertical: 20,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -292,51 +339,76 @@ const styles = StyleSheet.create({
   },
   communityCard: {
     width: communityCardWidth,
-    backgroundColor: '#FFF',
-    borderRadius: 15,
-    padding: 20,
-    marginLeft: 20,
-    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginRight: 12,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowRadius: 4,
   },
   communityName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 5,
+    marginBottom: 8,
   },
-  communityRanking: {
+  communityDescription: {
     fontSize: 14,
-    color: '#007AFF',
-    marginBottom: 15,
-    fontWeight: '500',
+    color: '#666',
+    marginBottom: 12,
   },
   communityStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-    paddingTop: 15,
+    alignItems: 'center',
   },
   communityStat: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   communityStatValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginLeft: 4,
+    marginRight: 4,
   },
   communityStatLabel: {
     fontSize: 12,
     color: '#666',
+    marginLeft: 4,
+  },
+  communityDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  emptyCommunities: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  newCommunityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+  },
+  newCommunityButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
   },
   menuItem: {
     backgroundColor: '#FFF',
@@ -356,22 +428,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
-  },
-  newCommunityButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 15,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  newCommunityButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
   },
 });
