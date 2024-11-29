@@ -1,18 +1,19 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
-import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import HomeScreen from '../screens/HomeScreen';
 import CommunitiesScreen from '../screens/CommunitiesScreen';
 import CreateCommunityScreen from '../screens/CreateCommunityScreen';
 import DiscoverCommunitiesScreen from '../screens/DiscoverCommunitiesScreen';
 import PlayersScreen from '../screens/PlayersScreen';
+import CommunityDetailsScreen from '../screens/CommunityDetailsScreen';
 import CustomDrawer from '../components/CustomDrawer';
 
 export type RootStackParamList = {
@@ -22,12 +23,18 @@ export type RootStackParamList = {
   CreateCommunity: undefined;
 };
 
+export type DrawerParamList = {
+  Home: undefined;
+  Communities: undefined;
+  DiscoverCommunities: undefined;
+  Players: undefined;
+  CommunityDetails: { communityId: string };
+};
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Drawer = createDrawerNavigator();
+const Drawer = createDrawerNavigator<DrawerParamList>();
 
-function DrawerNavigation() {
-  const { signOut } = useAuth();
-
+function DrawerNavigator() {
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
@@ -42,90 +49,93 @@ function DrawerNavigation() {
         drawerActiveBackgroundColor: '#007AFF',
         drawerActiveTintColor: '#fff',
         drawerInactiveTintColor: '#333',
-        drawerLabelStyle: {
-          marginLeft: 5,
-          fontSize: 16,
-          fontWeight: '500',
-        },
-        drawerItemStyle: {
-          paddingVertical: 2.5,
-          marginVertical: 2.5,
-        },
-        drawerIcon: {
-          size: 24,
-        },
-        headerRight: () => (
-          <TouchableOpacity 
-            onPress={signOut}
-            style={{ marginRight: 15 }}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-        ),
       }}
     >
       <Drawer.Screen
-        name="Início"
+        name="Home"
         component={HomeScreen}
         options={{
-          drawerIcon: ({ color }) => (
-            <Ionicons name="home-outline" size={24} color={color} />
+          title: 'Início',
+          drawerIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'home' : 'home-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />
       <Drawer.Screen
-        name="Minhas Comunidades"
+        name="Communities"
         component={CommunitiesScreen}
         options={{
-          drawerIcon: ({ color }) => (
-            <Ionicons name="people-outline" size={24} color={color} />
+          title: 'Minhas Comunidades',
+          drawerIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'people' : 'people-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />
       <Drawer.Screen
-        name="Descobrir Comunidades"
+        name="DiscoverCommunities"
         component={DiscoverCommunitiesScreen}
         options={{
-          drawerIcon: ({ color }) => (
-            <Ionicons name="search" size={24} color={color} />
+          title: 'Descobrir Comunidades',
+          drawerIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'search' : 'search-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />
       <Drawer.Screen
-        name="Histórico"
-        component={HomeScreen}
-        options={{
-          drawerIcon: ({ color }) => (
-            <Ionicons name="time-outline" size={24} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="Jogadores"
+        name="Players"
         component={PlayersScreen}
         options={{
           title: 'Jogadores',
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
+          drawerIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
+      />
+      <Drawer.Screen
+        name="CommunityDetails"
+        component={CommunityDetailsScreen}
+        options={({ navigation }) => ({
+          title: 'Detalhes da Comunidade',
+          drawerItemStyle: { display: 'none' },
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ marginLeft: 16 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+          ),
+        })}
       />
     </Drawer.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null;
-  }
+  const { user } = useAuth();
 
   return (
     <NavigationContainer>
-      <Stack.Navigator 
+      <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          contentStyle: { backgroundColor: '#fff' },
         }}
       >
         {!user ? (
@@ -135,20 +145,15 @@ export default function AppNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="DrawerNavigation" component={DrawerNavigation} />
-            <Stack.Screen 
-              name="CreateCommunity" 
+            <Stack.Screen name="DrawerNavigation" component={DrawerNavigator} />
+            <Stack.Screen
+              name="CreateCommunity"
               component={CreateCommunityScreen}
               options={{
                 headerShown: true,
                 title: 'Nova Comunidade',
-                headerStyle: {
-                  backgroundColor: '#007AFF',
-                },
-                headerTintColor: '#fff',
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                },
+                headerTitleAlign: 'center',
+                headerBackTitle: 'Voltar',
                 animation: 'slide_from_right',
               }}
             />

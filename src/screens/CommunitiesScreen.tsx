@@ -73,10 +73,7 @@ export default function CommunitiesScreen() {
   const renderCommunityItem = ({ item }: { item: Community }) => (
     <TouchableOpacity
       style={styles.communityCard}
-      onPress={() => {
-        // TODO: Navegar para a tela de detalhes da comunidade
-        console.log('Navegar para comunidade:', item.id);
-      }}
+      onPress={() => navigation.navigate('CommunityDetails', { communityId: item.id })}
     >
       <View style={styles.cardHeader}>
         <Text style={styles.communityName}>{item.name}</Text>

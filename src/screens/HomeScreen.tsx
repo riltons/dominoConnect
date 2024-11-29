@@ -118,27 +118,24 @@ export default function HomeScreen() {
     </View>
   );
 
-  const CommunityCard = ({ community }: { community: Community }) => (
-    <TouchableOpacity 
+  const renderCommunityItem = ({ item }: { item: Community }) => (
+    <TouchableOpacity
       style={styles.communityCard}
-      onPress={() => {
-        // TODO: Navegar para detalhes da comunidade
-        console.log('Navegar para comunidade:', community.id);
-      }}
+      onPress={() => navigation.navigate('CommunityDetails', { communityId: item.id })}
     >
-      <Text style={styles.communityName}>{community.name}</Text>
-      {community.description && (
+      <Text style={styles.communityName}>{item.name}</Text>
+      {item.description && (
         <Text style={styles.communityDescription} numberOfLines={2}>
-          {community.description}
+          {item.description}
         </Text>
       )}
       <View style={styles.communityStats}>
         <View style={styles.communityStat}>
           <Ionicons name="people" size={16} color="#007AFF" />
-          <Text style={styles.communityStatValue}>{community.members_count}</Text>
+          <Text style={styles.communityStatValue}>{item.members_count}</Text>
           <Text style={styles.communityStatLabel}>Membros</Text>
         </View>
-        {community.whatsapp_group_id && (
+        {item.whatsapp_group_id && (
           <View style={styles.communityStat}>
             <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
             <Text style={styles.communityStatLabel}>Grupo</Text>
@@ -146,7 +143,7 @@ export default function HomeScreen() {
         )}
         <View style={styles.communityStat}>
           <Text style={styles.communityDate}>
-            {new Date(community.created_at).toLocaleDateString('pt-BR')}
+            {new Date(item.created_at).toLocaleDateString('pt-BR')}
           </Text>
         </View>
       </View>
@@ -176,7 +173,7 @@ export default function HomeScreen() {
             <FlatList
               horizontal
               data={communities}
-              renderItem={({ item }) => <CommunityCard community={item} />}
+              renderItem={renderCommunityItem}
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.communitiesContainer}
