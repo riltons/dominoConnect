@@ -9,24 +9,34 @@ import {
   TextInput,
   Modal,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
+
+type Community = {
+  id: string;
+  name: string;
+};
 
 type Player = {
   id: string;
   name: string;
   nickname?: string;
-  phone?: string;
+  phone: string;
   games_played: number;
   games_won: number;
   created_at: string;
+  communities?: Community[];
 };
 
 export default function PlayersScreen() {
+  const { user } = useAuth();
   const navigation = useNavigation();
   const [players, setPlayers] = useState<Player[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -35,22 +45,58 @@ export default function PlayersScreen() {
     name: '',
     nickname: '',
     phone: '',
+    selectedCommunities: [] as string[],
   });
 
   useEffect(() => {
     fetchPlayers();
+    fetchUserCommunities();
   }, []);
+
+  const fetchUserCommunities = async () => {
+    try {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('communities')
+        .select('id, name')
+        .eq('created_by', user.id)
+        .order('name');
+
+      if (error) throw error;
+      setCommunities(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar comunidades:', error);
+    }
+  };
 
   const fetchPlayers = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: playersData, error: playersError } = await supabase
         .from('players')
-        .select('*')
-        .order('name', { ascending: true });
+        .select('*, player_communities(community_id)');
 
-      if (error) throw error;
+      if (playersError) throw playersError;
 
-      setPlayers(data || []);
+      // Buscar detalhes das comunidades para cada jogador
+      const playersWithCommunities = await Promise.all(
+        (playersData || []).map(async (player) => {
+          const communityIds = player.player_communities?.map(pc => pc.community_id) || [];
+          if (communityIds.length === 0) return { ...player, communities: [] };
+
+          const { data: communitiesData } = await supabase
+            .from('communities')
+            .select('id, name')
+            .in('id', communityIds);
+
+          return {
+            ...player,
+            communities: communitiesData || [],
+          };
+        })
+      );
+
+      setPlayers(playersWithCommunities);
     } catch (error) {
       console.error('Erro ao buscar jogadores:', error);
       Alert.alert('Erro', 'Não foi possível carregar os jogadores.');
@@ -66,21 +112,46 @@ export default function PlayersScreen() {
       return;
     }
 
-    try {
-      const { data, error } = await supabase.from('players').insert([
-        {
-          name: newPlayer.name.trim(),
-          nickname: newPlayer.nickname.trim() || null,
-          phone: newPlayer.phone.trim() || null,
-          games_played: 0,
-          games_won: 0,
-        },
-      ]);
+    if (!newPlayer.phone.trim()) {
+      Alert.alert('Erro', 'O telefone do jogador é obrigatório.');
+      return;
+    }
 
-      if (error) throw error;
+    try {
+      // Inserir o jogador
+      const playerData = {
+        name: newPlayer.name.trim(),
+        phone: newPlayer.phone.trim(),
+      };
+
+      if (newPlayer.nickname.trim()) {
+        playerData.nickname = newPlayer.nickname.trim();
+      }
+
+      const { data, error: playerError } = await supabase
+        .from('players')
+        .insert([playerData])
+        .select()
+        .single();
+
+      if (playerError) throw playerError;
+
+      // Inserir as relações com as comunidades selecionadas
+      if (newPlayer.selectedCommunities.length > 0 && data) {
+        const playerCommunities = newPlayer.selectedCommunities.map(communityId => ({
+          player_id: data.id,
+          community_id: communityId,
+        }));
+
+        const { error: relationError } = await supabase
+          .from('player_communities')
+          .insert(playerCommunities);
+
+        if (relationError) throw relationError;
+      }
 
       setModalVisible(false);
-      setNewPlayer({ name: '', nickname: '', phone: '' });
+      setNewPlayer({ name: '', nickname: '', phone: '', selectedCommunities: [] });
       fetchPlayers();
       Alert.alert('Sucesso', 'Jogador adicionado com sucesso!');
     } catch (error) {
@@ -89,10 +160,34 @@ export default function PlayersScreen() {
     }
   };
 
-  const filteredPlayers = players.filter(
-    player =>
-      player.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      (player.nickname?.toLowerCase() || '').includes(searchText.toLowerCase())
+  const toggleCommunity = (communityId: string) => {
+    setNewPlayer(prev => {
+      const selected = prev.selectedCommunities.includes(communityId)
+        ? prev.selectedCommunities.filter(id => id !== communityId)
+        : [...prev.selectedCommunities, communityId];
+
+      return { ...prev, selectedCommunities: selected };
+    });
+  };
+
+  const renderCommunityItem = ({ item }: { item: Community }) => (
+    <TouchableOpacity
+      key={item.id}
+      style={[
+        styles.communityChip,
+        newPlayer.selectedCommunities.includes(item.id) && styles.communityChipSelected,
+      ]}
+      onPress={() => toggleCommunity(item.id)}
+    >
+      <Text
+        style={[
+          styles.communityChipText,
+          newPlayer.selectedCommunities.includes(item.id) && styles.communityChipTextSelected,
+        ]}
+      >
+        {item.name}
+      </Text>
+    </TouchableOpacity>
   );
 
   const renderPlayerItem = ({ item }: { item: Player }) => (
@@ -102,10 +197,22 @@ export default function PlayersScreen() {
         {item.nickname && (
           <Text style={styles.playerNickname}>"{item.nickname}"</Text>
         )}
-        {item.phone && (
-          <View style={styles.phoneContainer}>
-            <Ionicons name="call" size={14} color="#666" />
-            <Text style={styles.phoneText}>{item.phone}</Text>
+        <View style={styles.phoneContainer}>
+          <Ionicons name="call" size={14} color="#666" />
+          <Text style={styles.phoneText}>{item.phone}</Text>
+        </View>
+        {item.communities && item.communities.length > 0 && (
+          <View style={styles.playerCommunities}>
+            <Text style={styles.communitiesLabel}>Comunidades:</Text>
+            <View style={styles.communitiesList}>
+              {item.communities.map((community, index) => (
+                <View key={community.id} style={styles.communityTag}>
+                  <Text style={styles.communityTagText}>
+                    {community.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </View>
@@ -128,6 +235,12 @@ export default function PlayersScreen() {
         </View>
       </View>
     </TouchableOpacity>
+  );
+
+  const filteredPlayers = players.filter(
+    player =>
+      player.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      (player.nickname?.toLowerCase() || '').includes(searchText.toLowerCase())
   );
 
   const renderEmptyList = () => (
@@ -180,50 +293,79 @@ export default function PlayersScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Novo Jogador</Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Nome do jogador *"
-              value={newPlayer.name}
-              onChangeText={(text) => setNewPlayer({ ...newPlayer, name: text })}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Apelido (opcional)"
-              value={newPlayer.nickname}
-              onChangeText={(text) => setNewPlayer({ ...newPlayer, nickname: text })}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Telefone (opcional)"
-              value={newPlayer.phone}
-              onChangeText={(text) => setNewPlayer({ ...newPlayer, phone: text })}
-              keyboardType="phone-pad"
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  setNewPlayer({ name: '', nickname: '', phone: '' });
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
+          <ScrollView>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Novo Jogador</Text>
               
-              <TouchableOpacity
-                style={[styles.modalButton, styles.addButton]}
-                onPress={handleAddPlayer}
-              >
-                <Text style={styles.addButtonText}>Adicionar</Text>
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Nome do jogador *"
+                value={newPlayer.name}
+                onChangeText={(text) => setNewPlayer({ ...newPlayer, name: text })}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Apelido (opcional)"
+                value={newPlayer.nickname}
+                onChangeText={(text) => setNewPlayer({ ...newPlayer, nickname: text })}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Telefone *"
+                value={newPlayer.phone}
+                onChangeText={(text) => setNewPlayer({ ...newPlayer, phone: text })}
+                keyboardType="phone-pad"
+              />
+
+              {communities.length > 0 && (
+                <View style={styles.communitiesSection}>
+                  <Text style={styles.communitiesTitle}>Vincular às comunidades:</Text>
+                  <View style={styles.communitiesGrid}>
+                    {communities.map(community => (
+                      <TouchableOpacity
+                        key={community.id}
+                        style={[
+                          styles.communityChip,
+                          newPlayer.selectedCommunities.includes(community.id) && styles.communityChipSelected,
+                        ]}
+                        onPress={() => toggleCommunity(community.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.communityChipText,
+                            newPlayer.selectedCommunities.includes(community.id) && styles.communityChipTextSelected,
+                          ]}
+                        >
+                          {community.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setModalVisible(false);
+                    setNewPlayer({ name: '', nickname: '', phone: '', selectedCommunities: [] });
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.addButton]}
+                  onPress={handleAddPlayer}
+                >
+                  <Text style={styles.addButtonText}>Adicionar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -402,5 +544,65 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  communitiesSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  communitiesTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  communitiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  communityChip: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  communityChipSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  communityChipText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  communityChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  playerCommunities: {
+    marginTop: 8,
+  },
+  communitiesLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  communitiesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  communityTag: {
+    backgroundColor: '#F0F8FF',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  communityTagText: {
+    fontSize: 12,
+    color: '#007AFF',
   },
 });
