@@ -1,256 +1,107 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   FlatList,
-  Animated,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import { supabase } from '../lib/supabase';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'DrawerNavigation'>;
-
-// Dados fictícios para teste
-const myCommunities = [
-  {
-    id: '1',
-    nome: 'Dominó Masters',
-    membros: 45,
-    jogosSemanais: 23,
-    mediaJogadores: 4.8,
-    distancia: 0, // km
-    cidade: 'São Paulo',
-    estado: 'SP'
-  },
-  {
-    id: '2',
-    nome: 'Dominó Club SP',
-    membros: 32,
-    jogosSemanais: 18,
-    mediaJogadores: 4.5,
-    distancia: 0, // km
-    cidade: 'São Paulo',
-    estado: 'SP'
-  },
-];
-
-const nearbyCommunities = [
-  {
-    id: '3',
-    nome: 'Dominó Guarulhos',
-    membros: 28,
-    jogosSemanais: 15,
-    mediaJogadores: 4.7,
-    distancia: 15, // km
-    cidade: 'Guarulhos',
-    estado: 'SP'
-  },
-  {
-    id: '4',
-    nome: 'Dominó ABC',
-    membros: 37,
-    jogosSemanais: 20,
-    mediaJogadores: 4.6,
-    distancia: 25, // km
-    cidade: 'Santo André',
-    estado: 'SP'
-  },
-  {
-    id: '5',
-    nome: 'Dominó Campinas',
-    membros: 41,
-    jogosSemanais: 25,
-    mediaJogadores: 4.9,
-    distancia: 90, // km
-    cidade: 'Campinas',
-    estado: 'SP'
-  },
-];
+type Community = {
+  id: string;
+  name: string;
+  description: string | null;
+  whatsapp_group_id: string | null;
+  created_at: string;
+};
 
 export default function CommunitiesScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const [maxDistance, setMaxDistance] = useState(50);
-  const sliderValueRef = useRef(50);
-  const [expandedSection, setExpandedSection] = useState<'my'|'nearby'|null>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const navigation = useNavigation();
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filtrar comunidades usando useMemo para melhor performance
-  const filteredNearbyCommunities = useMemo(() => 
-    nearbyCommunities.filter(
-      community => community.distancia <= maxDistance
-    ),
-    [maxDistance]
+  useEffect(() => {
+    fetchCommunities();
+
+    // Atualiza a lista quando voltar para esta tela
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchCommunities();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const fetchCommunities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('communities')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setCommunities(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar comunidades:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderCommunityItem = ({ item }: { item: Community }) => (
+    <TouchableOpacity
+      style={styles.communityCard}
+      onPress={() => {
+        // TODO: Navegar para a tela de detalhes da comunidade
+        console.log('Navegar para comunidade:', item.id);
+      }}
+    >
+      <Text style={styles.communityName}>{item.name}</Text>
+      {item.description && (
+        <Text style={styles.communityDescription} numberOfLines={2}>
+          {item.description}
+        </Text>
+      )}
+      <Text style={styles.communityDate}>
+        Criada em: {new Date(item.created_at).toLocaleDateString('pt-BR')}
+      </Text>
+    </TouchableOpacity>
   );
 
-  // Handler otimizado para o slider com debounce usando ref
-  const handleSliderChange = useCallback((value: number) => {
-    const roundedValue = Math.round(value);
-    sliderValueRef.current = roundedValue;
-
-    // Limpa o timer anterior se existir
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Cria um novo timer
-    debounceTimerRef.current = setTimeout(() => {
-      setMaxDistance(roundedValue);
-      debounceTimerRef.current = null;
-    }, 50); // Reduzido para 50ms para melhor responsividade
-  }, []);
-
-  // Limpa o timer quando o componente é desmontado
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Handler otimizado para expandir/colapsar seções
-  const toggleSection = useCallback((section: 'my' | 'nearby') => {
-    setExpandedSection(current => current === section ? null : section);
-  }, []);
-
-  const CommunityCard = useCallback(({ community, showDistance = false }) => (
-    <View style={styles.communityCard}>
-      <View style={styles.communityHeader}>
-        <View>
-          <Text style={styles.communityName}>{community.nome}</Text>
-          <Text style={styles.communityLocation}>
-            {community.cidade}, {community.estado}
-          </Text>
-        </View>
-        {showDistance && (
-          <Text style={styles.distanceBadge}>
-            {community.distancia}km
-          </Text>
-        )}
-      </View>
-      
-      <View style={styles.communityStats}>
-        <View style={styles.statItem}>
-          <Ionicons name="people-outline" size={20} color="#666" />
-          <Text style={styles.statValue}>{community.membros}</Text>
-          <Text style={styles.statLabel}>Membros</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="game-controller-outline" size={20} color="#666" />
-          <Text style={styles.statValue}>{community.jogosSemanais}</Text>
-          <Text style={styles.statLabel}>Jogos/Sem</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="star-outline" size={20} color="#666" />
-          <Text style={styles.statValue}>{community.mediaJogadores}</Text>
-          <Text style={styles.statLabel}>Média</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.joinButton}>
-        <Text style={styles.joinButtonText}>Participar</Text>
-      </TouchableOpacity>
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>
+        Nenhuma comunidade encontrada.{'\n'}
+        Crie uma nova comunidade para começar!
+      </Text>
     </View>
-  ), []);
-
-  const SectionHeader = useCallback(({ title, count, isExpanded, onPress }) => (
-    <TouchableOpacity 
-      style={[
-        styles.sectionHeader,
-        isExpanded && styles.sectionHeaderExpanded
-      ]} 
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.sectionTitleContainer}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.communityCount}>({count})</Text>
-      </View>
-      <Ionicons 
-        name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-        size={24} 
-        color="#333"
-      />
-    </TouchableOpacity>
-  ), []);
+  );
 
   return (
-    <ScrollView style={styles.container} scrollEventThrottle={16}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Comunidades</Text>
-        <TouchableOpacity 
-          style={styles.createButton}
-          onPress={() => navigation.navigate('CreateCommunity')}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-          <Text style={styles.createButtonText}>Nova Comunidade</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.distanceControl}>
-        <Text style={styles.distanceLabel}>
-          Distância máxima: {sliderValueRef.current}km
-        </Text>
-        <Slider
-          style={styles.slider}
-          minimumValue={5}
-          maximumValue={100}
-          step={5}
-          value={maxDistance}
-          onValueChange={handleSliderChange}
-          minimumTrackTintColor="#007AFF"
-          maximumTrackTintColor="#ddd"
-          thumbTintColor="#007AFF"
-          tapToSeek={false}
+    <View style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+      ) : (
+        <FlatList
+          data={communities}
+          renderItem={renderCommunityItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={renderEmptyList}
         />
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader
-          title="Minhas Comunidades"
-          count={myCommunities.length}
-          isExpanded={expandedSection === 'my'}
-          onPress={() => toggleSection('my')}
-        />
-        {expandedSection === 'my' && (
-          <View style={styles.cardContainer}>
-            {myCommunities.map(community => (
-              <CommunityCard 
-                key={community.id} 
-                community={community}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader
-          title="Comunidades Próximas"
-          count={filteredNearbyCommunities.length}
-          isExpanded={expandedSection === 'nearby'}
-          onPress={() => toggleSection('nearby')}
-        />
-        {expandedSection === 'nearby' && (
-          <View style={styles.cardContainer}>
-            {filteredNearbyCommunities.map(community => (
-              <CommunityCard 
-                key={community.id} 
-                community={community}
-                showDistance
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      )}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateCommunity' as never)}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -259,150 +110,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  listContainer: {
     padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#007AFF',
-    padding: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    color: '#fff',
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-  distanceControl: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    margin: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 8,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-    marginTop: 8,
-  },
-  distanceLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 10,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  sectionHeaderExpanded: {
-    backgroundColor: '#f0f0f0',
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  communityCount: {
-    fontSize: 16,
-    color: '#666',
-    marginLeft: 8,
+    paddingBottom: 80, // Espaço para o FAB
   },
   communityCard: {
-    backgroundColor: '#FFF',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  communityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   communityName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  communityLocation: {
+  communityDescription: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 8,
   },
-  distanceBadge: {
-    backgroundColor: '#007AFF',
-    color: '#FFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  communityDate: {
     fontSize: 12,
-    fontWeight: 'bold',
+    color: '#999',
   },
-  communityStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 15,
-  },
-  statItem: {
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  statValue: {
+  emptyText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 4,
-  },
-  statLabel: {
-    fontSize: 12,
     color: '#666',
-    marginTop: 2,
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  joinButton: {
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  joinButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  cardContainer: {
-    marginTop: 8,
+  fabText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
