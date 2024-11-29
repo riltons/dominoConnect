@@ -32,9 +32,17 @@ export default function DiscoverCommunitiesScreen() {
   const fetchCommunities = async (distance: number) => {
     try {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('communities')
         .select('*')
+        .neq('created_by', user.id) // Excluir comunidades criadas pelo usuário atual
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -127,7 +135,8 @@ export default function DiscoverCommunitiesScreen() {
         neste raio de distância.
       </Text>
       <Text style={styles.emptySubtext}>
-        Tente aumentar a distância de busca
+        Tente aumentar a distância de busca ou{'\n'}
+        crie sua própria comunidade!
       </Text>
     </View>
   );
