@@ -16,13 +16,9 @@ import { useNavigation } from '@react-navigation/native';
 export default function CreateCommunityScreen() {
   const navigation = useNavigation();
   const [formData, setFormData] = useState({
-    nome: '',
-    descricao: '',
-    cidade: '',
-    estado: '',
-    bairro: '',
-    jogosSemanais: '',
-    mediaJogadores: '',
+    name: '',
+    description: '',
+    whatsapp_group_id: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -35,9 +31,8 @@ export default function CreateCommunityScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validação básica
-    if (!formData.nome || !formData.cidade || !formData.estado) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios');
+    if (!formData.name) {
+      Alert.alert('Erro', 'Por favor, preencha o nome da comunidade');
       return;
     }
 
@@ -48,22 +43,27 @@ export default function CreateCommunityScreen() {
         throw new Error('Usuário não autenticado');
       }
 
+      // Log para debug
+      console.log('Enviando dados:', {
+        ...formData,
+        created_by: userData.user.id,
+      });
+
       const { error } = await supabase
         .from('communities')
         .insert([
           {
-            nome: formData.nome,
-            descricao: formData.descricao,
-            cidade: formData.cidade,
-            estado: formData.estado,
-            bairro: formData.bairro,
-            jogos_semanais: parseInt(formData.jogosSemanais) || 0,
-            media_jogadores: parseInt(formData.mediaJogadores) || 0,
-            criador_id: userData.user.id,
+            name: formData.name,
+            description: formData.description || null,
+            whatsapp_group_id: formData.whatsapp_group_id || null,
+            created_by: userData.user.id,
           },
         ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro detalhado:', error);
+        throw error;
+      }
 
       Alert.alert('Sucesso', 'Comunidade criada com sucesso!', [
         {
@@ -90,8 +90,8 @@ export default function CreateCommunityScreen() {
             <Text style={styles.label}>Nome da Comunidade*</Text>
             <TextInput
               style={styles.input}
-              value={formData.nome}
-              onChangeText={(value) => handleInputChange('nome', value)}
+              value={formData.name}
+              onChangeText={(value) => handleInputChange('name', value)}
               placeholder="Digite o nome da comunidade"
               placeholderTextColor="#999"
             />
@@ -101,8 +101,8 @@ export default function CreateCommunityScreen() {
             <Text style={styles.label}>Descrição</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              value={formData.descricao}
-              onChangeText={(value) => handleInputChange('descricao', value)}
+              value={formData.description}
+              onChangeText={(value) => handleInputChange('description', value)}
               placeholder="Descreva sua comunidade"
               placeholderTextColor="#999"
               multiline
@@ -110,78 +110,27 @@ export default function CreateCommunityScreen() {
             />
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 2 }]}>
-              <Text style={styles.label}>Cidade*</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.cidade}
-                onChangeText={(value) => handleInputChange('cidade', value)}
-                placeholder="Cidade"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-              <Text style={styles.label}>Estado*</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.estado}
-                onChangeText={(value) => handleInputChange('estado', value)}
-                placeholder="UF"
-                placeholderTextColor="#999"
-                maxLength={2}
-              />
-            </View>
-          </View>
-
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bairro</Text>
+            <Text style={styles.label}>ID do Grupo do WhatsApp</Text>
             <TextInput
               style={styles.input}
-              value={formData.bairro}
-              onChangeText={(value) => handleInputChange('bairro', value)}
-              placeholder="Digite o bairro"
+              value={formData.whatsapp_group_id}
+              onChangeText={(value) => handleInputChange('whatsapp_group_id', value)}
+              placeholder="ID do grupo (opcional)"
               placeholderTextColor="#999"
             />
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Jogos Semanais</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.jogosSemanais}
-                onChangeText={(value) => handleInputChange('jogosSemanais', value)}
-                placeholder="0"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-              <Text style={styles.label}>Média de Jogadores</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.mediaJogadores}
-                onChangeText={(value) => handleInputChange('mediaJogadores', value)}
-                placeholder="0"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
+          <TouchableOpacity
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.submitButtonText}>
+              {loading ? 'Criando...' : 'Criar Comunidade'}
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.submitButtonText}>
-            {loading ? 'Criando...' : 'Criar Comunidade'}
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -219,10 +168,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
-  },
-  row: {
-    flexDirection: 'row',
-    marginBottom: 16,
   },
   submitButton: {
     backgroundColor: '#007AFF',
