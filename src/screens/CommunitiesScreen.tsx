@@ -10,6 +10,12 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'DrawerNavigation'>;
 
 // Dados fictícios para teste
 const myCommunities = [
@@ -69,6 +75,7 @@ const nearbyCommunities = [
 ];
 
 export default function CommunitiesScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [maxDistance, setMaxDistance] = useState(50);
   const sliderValueRef = useRef(50);
   const [expandedSection, setExpandedSection] = useState<'my'|'nearby'|null>(null);
@@ -176,6 +183,17 @@ export default function CommunitiesScreen() {
 
   return (
     <ScrollView style={styles.container} scrollEventThrottle={16}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Comunidades</Text>
+        <TouchableOpacity 
+          style={styles.createButton}
+          onPress={() => navigation.navigate('CreateCommunity')}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+          <Text style={styles.createButtonText}>Nova Comunidade</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.distanceControl}>
         <Text style={styles.distanceLabel}>
           Distância máxima: {sliderValueRef.current}km
@@ -240,6 +258,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    padding: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: '#fff',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   distanceControl: {
     padding: 16,
