@@ -12,6 +12,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import CommunitiesScreen from '../screens/CommunitiesScreen';
 import CreateCommunityScreen from '../screens/CreateCommunityScreen';
 import DiscoverCommunitiesScreen from '../screens/DiscoverCommunitiesScreen';
+import PlayersScreen from '../screens/PlayersScreen';
 import CustomDrawer from '../components/CustomDrawer';
 
 export type RootStackParamList = {
@@ -101,10 +102,11 @@ function DrawerNavigation() {
       />
       <Drawer.Screen
         name="Jogadores"
-        component={HomeScreen}
+        component={PlayersScreen}
         options={{
-          drawerIcon: ({ color }) => (
-            <Ionicons name="people-outline" size={24} color={color} />
+          title: 'Jogadores',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />
