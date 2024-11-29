@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Animated,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,9 +70,50 @@ const nearbyCommunities = [
 
 export default function CommunitiesScreen() {
   const [maxDistance, setMaxDistance] = useState(50);
+  const sliderValueRef = useRef(50);
   const [expandedSection, setExpandedSection] = useState<'my'|'nearby'|null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const CommunityCard = ({ community, showDistance = false }) => (
+  // Filtrar comunidades usando useMemo para melhor performance
+  const filteredNearbyCommunities = useMemo(() => 
+    nearbyCommunities.filter(
+      community => community.distancia <= maxDistance
+    ),
+    [maxDistance]
+  );
+
+  // Handler otimizado para o slider com debounce usando ref
+  const handleSliderChange = useCallback((value: number) => {
+    const roundedValue = Math.round(value);
+    sliderValueRef.current = roundedValue;
+
+    // Limpa o timer anterior se existir
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Cria um novo timer
+    debounceTimerRef.current = setTimeout(() => {
+      setMaxDistance(roundedValue);
+      debounceTimerRef.current = null;
+    }, 50); // Reduzido para 50ms para melhor responsividade
+  }, []);
+
+  // Limpa o timer quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Handler otimizado para expandir/colapsar seções
+  const toggleSection = useCallback((section: 'my' | 'nearby') => {
+    setExpandedSection(current => current === section ? null : section);
+  }, []);
+
+  const CommunityCard = useCallback(({ community, showDistance = false }) => (
     <View style={styles.communityCard}>
       <View style={styles.communityHeader}>
         <View>
@@ -109,16 +151,16 @@ export default function CommunitiesScreen() {
         <Text style={styles.joinButtonText}>Participar</Text>
       </TouchableOpacity>
     </View>
-  );
+  ), []);
 
-  const filteredNearbyCommunities = nearbyCommunities.filter(
-    community => community.distancia <= maxDistance
-  );
-
-  const SectionHeader = ({ title, count, isExpanded, onPress }) => (
+  const SectionHeader = useCallback(({ title, count, isExpanded, onPress }) => (
     <TouchableOpacity 
-      style={styles.sectionHeader} 
+      style={[
+        styles.sectionHeader,
+        isExpanded && styles.sectionHeaderExpanded
+      ]} 
       onPress={onPress}
+      activeOpacity={0.7}
     >
       <View style={styles.sectionTitleContainer}>
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -130,13 +172,13 @@ export default function CommunitiesScreen() {
         color="#333"
       />
     </TouchableOpacity>
-  );
+  ), []);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} scrollEventThrottle={16}>
       <View style={styles.distanceControl}>
         <Text style={styles.distanceLabel}>
-          Distância máxima: {maxDistance}km
+          Distância máxima: {sliderValueRef.current}km
         </Text>
         <Slider
           style={styles.slider}
@@ -144,11 +186,11 @@ export default function CommunitiesScreen() {
           maximumValue={100}
           step={5}
           value={maxDistance}
-          onValueChange={setMaxDistance}
+          onValueChange={handleSliderChange}
           minimumTrackTintColor="#007AFF"
           maximumTrackTintColor="#ddd"
           thumbTintColor="#007AFF"
-          tapToSeek={true}
+          tapToSeek={false}
         />
       </View>
 
@@ -157,12 +199,10 @@ export default function CommunitiesScreen() {
           title="Minhas Comunidades"
           count={myCommunities.length}
           isExpanded={expandedSection === 'my'}
-          onPress={() => setExpandedSection(
-            expandedSection === 'my' ? null : 'my'
-          )}
+          onPress={() => toggleSection('my')}
         />
         {expandedSection === 'my' && (
-          <View>
+          <View style={styles.cardContainer}>
             {myCommunities.map(community => (
               <CommunityCard 
                 key={community.id} 
@@ -178,12 +218,10 @@ export default function CommunitiesScreen() {
           title="Comunidades Próximas"
           count={filteredNearbyCommunities.length}
           isExpanded={expandedSection === 'nearby'}
-          onPress={() => setExpandedSection(
-            expandedSection === 'nearby' ? null : 'nearby'
-          )}
+          onPress={() => toggleSection('nearby')}
         />
         {expandedSection === 'nearby' && (
-          <View>
+          <View style={styles.cardContainer}>
             {filteredNearbyCommunities.map(community => (
               <CommunityCard 
                 key={community.id} 
@@ -204,20 +242,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   distanceControl: {
-    backgroundColor: '#FFF',
-    padding: 20,
-    marginBottom: 10,
-  },
-  distanceLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 10,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    margin: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 8,
   },
   slider: {
     width: '100%',
     height: 40,
-    flexGrow: 0,
-    flexShrink: 0,
+    marginTop: 8,
+  },
+  distanceLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
   },
   section: {
     marginBottom: 10,
@@ -230,6 +278,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
+  },
+  sectionHeaderExpanded: {
+    backgroundColor: '#f0f0f0',
   },
   sectionTitleContainer: {
     flexDirection: 'row',
@@ -305,5 +356,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  cardContainer: {
+    marginTop: 8,
   },
 });
